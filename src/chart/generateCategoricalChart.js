@@ -670,6 +670,19 @@ const generateCategoricalChart = (ChartComponent, GraphicalChild) => {
       }
     };
 
+    /**
+     * Added by Tho Q Luong
+     * Dec 16, 2016
+     */
+    handleTouchMove = (e) => {
+      if(e.changedTouches != null && e.changedTouches.length > 0) {
+        this.handleMouseMove({
+          pageX: e.changedTouches[0].pageX,
+          pageY: e.changedTouches[0].pageY
+        });
+      }
+    };
+
     handleClick = (e) => {
       const { onClick } = this.props;
 
@@ -928,6 +941,7 @@ const generateCategoricalChart = (ChartComponent, GraphicalChild) => {
         onMouseMove: this.handleMouseMove,
         onMouseLeave: this.handleMouseLeave,
         onClick: this.handleClick,
+        onTouchMove: this.handleTouchMove //Added by Tho Q Luong. Dec 16, 2016
       };
       const attrs = getPresentationAttributes(others);
 

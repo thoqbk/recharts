@@ -970,7 +970,6 @@ const generateCategoricalChart = (ChartComponent, GraphicalChild) => {
     // Updated to support Game Stats chart. Tho Q Luong. Dec 22, 2016
 
     handleTouchMove = (e) => {
-      e.preventDefault();
       if(e.changedTouches != null && e.changedTouches.length > 0) {
         let changedTouch = e.changedTouches[0];
         this.processTouch(changedTouch);

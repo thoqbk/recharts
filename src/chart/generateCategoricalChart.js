@@ -970,24 +970,37 @@ const generateCategoricalChart = (ChartComponent, GraphicalChild) => {
     // Updated to support Game Stats chart. Tho Q Luong. Dec 22, 2016
 
     handleTouchMove = (e) => {
+      e.preventDefault();
       if(e.changedTouches != null && e.changedTouches.length > 0) {
         let changedTouch = e.changedTouches[0];
         this.processTouch(changedTouch);
-        console.log("TouchMove: ", changedTouch);
       }
     };
 
     handleTouchStart = (e) => {
-      if(e.changedTouches != null && e.changedTouches.length > 0) {
-        let changedTouch = e.changedTouches[0];
-        this.processTouch(changedTouch);
-        let nearCursor = this.state.activeCoordinate != null
-          && Math.abs(changedTouch.pageX - this.state.activeCoordinate.x) < 20;
-        console.log("Near cursor: ", nearCursor);
-        console.log("TouchStart: ", {pageX: changedTouch.pageX,
-          pageY: changedTouch.pageY,
-          activeCoordinate: this.state.activeCoordinate});
+      e.preventDefault();
+      if(e.changedTouches == null || e.changedTouches.length == 0) {
+        return;
       }
+      let changedTouch = e.changedTouches[0];
+      if(this.state.isTooltipActive) {
+        const { offset } = this.state;
+        const container = this.container;
+        const containerOffset = getOffset(container);
+        const ne = calculateChartCoordinate(changedTouch, containerOffset);
+        const mouse = this.getMouseInfo(offset, ne);
+        let b = mouse != null && this.state.activeCoordinate != null
+          && Math.abs(this.state.activeCoordinate.x - ne.chartX) > 50;//not near the cursor
+        if(b) {
+          this.setState({
+            isTooltipActive: false
+          });
+          return;
+        } else if(mouse == null) {//tooltip is active, and touch outside the chart's body
+          return;
+        }
+      }
+      this.processTouch(changedTouch);
     }
 
     handleTouchEnd = (e) => {
@@ -1004,10 +1017,15 @@ const generateCategoricalChart = (ChartComponent, GraphicalChild) => {
       const containerOffset = getOffset(container);
       const ne = calculateChartCoordinate(e, containerOffset);
       const mouse = this.xGetMouseInfo(offset, ne);
-      const nextState = mouse ? { ...mouse, isTooltipActive: true } : { isTooltipActive: false };
-
-      this.setState(nextState);
-      this.triggerSyncEvent(nextState);
+      //const nextState = mouse ? { ...mouse, isTooltipActive: true } : { isTooltipActive: false };
+      if(mouse != null) {
+        const nextState = {
+          ...mouse,
+          isTooltipActive: true
+        }
+        this.setState(nextState);
+        this.triggerSyncEvent(nextState);
+      }
     }
 
     /**
@@ -1027,7 +1045,7 @@ const generateCategoricalChart = (ChartComponent, GraphicalChild) => {
         if(e.chartX < offset.left) {
           e.chartX = offset.left;
         } else if(e.chartX > offset.left + offset.width) {
-          e.chartX = offset.left + offset.width - 2;
+          e.chartX = offset.left + offset.width;
         } else {
           return null;
         }

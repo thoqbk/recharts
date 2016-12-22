@@ -670,19 +670,6 @@ const generateCategoricalChart = (ChartComponent, GraphicalChild) => {
       }
     };
 
-    /**
-     * Added by Tho Q Luong
-     * Dec 16, 2016
-     */
-    handleTouchMove = (e) => {
-      if(e.changedTouches != null && e.changedTouches.length > 0) {
-        this.handleMouseMove({
-          pageX: e.changedTouches[0].pageX,
-          pageY: e.changedTouches[0].pageY
-        });
-      }
-    };
-
     handleClick = (e) => {
       const { onClick } = this.props;
 
@@ -941,7 +928,11 @@ const generateCategoricalChart = (ChartComponent, GraphicalChild) => {
         onMouseMove: this.handleMouseMove,
         onMouseLeave: this.handleMouseLeave,
         onClick: this.handleClick,
-        onTouchMove: this.handleTouchMove //Added by Tho Q Luong. Dec 16, 2016
+
+        onTouchMove: this.handleTouchMove,
+        onTouchStart: this.handleTouchStart,
+        onTouchEnd: this.handleTouchEnd,
+        onTouchCancel: this.handleTouchCancel
       };
       const attrs = getPresentationAttributes(others);
 
@@ -974,6 +965,98 @@ const generateCategoricalChart = (ChartComponent, GraphicalChild) => {
         </div>
       );
     }
+
+    //--------------------------------------------------------------------------
+    // Updated to support Game Stats chart. Tho Q Luong. Dec 22, 2016
+
+    handleTouchMove = (e) => {
+      if(e.changedTouches != null && e.changedTouches.length > 0) {
+        let changedTouch = e.changedTouches[0];
+        this.processTouch(changedTouch);
+        console.log("TouchMove: ", changedTouch);
+      }
+    };
+
+    handleTouchStart = (e) => {
+      if(e.changedTouches != null && e.changedTouches.length > 0) {
+        let changedTouch = e.changedTouches[0];
+        this.processTouch(changedTouch);
+        let nearCursor = this.state.activeCoordinate != null
+          && Math.abs(changedTouch.pageX - this.state.activeCoordinate.x) < 20;
+        console.log("Near cursor: ", nearCursor);
+        console.log("TouchStart: ", {pageX: changedTouch.pageX,
+          pageY: changedTouch.pageY,
+          activeCoordinate: this.state.activeCoordinate});
+      }
+    }
+
+    handleTouchEnd = (e) => {
+
+    }
+
+    handleTouchCancel = (e) => {
+
+    }
+
+    processTouch(e) {
+      const { offset } = this.state;
+      const container = this.container;
+      const containerOffset = getOffset(container);
+      const ne = calculateChartCoordinate(e, containerOffset);
+      const mouse = this.xGetMouseInfo(offset, ne);
+      const nextState = mouse ? { ...mouse, isTooltipActive: true } : { isTooltipActive: false };
+
+      this.setState(nextState);
+      this.triggerSyncEvent(nextState);
+    }
+
+    /**
+     * Extend this.getMouseInfo
+     * Get the information of mouse in chart, return null when the mouse is not in the chart
+     * @param  {Object} offset   The offset of main part in the svg element
+     * @param  {Object} e        The event object
+     * @return {Object}          Mouse data
+     */
+    xGetMouseInfo(offset, e) {
+      const isIn = e.chartX >= offset.left
+        && e.chartX <= offset.left + offset.width
+        && e.chartY >= offset.top
+        && e.chartY <= offset.top + offset.height;
+
+      if (!isIn) {
+        if(e.chartX < offset.left) {
+          e.chartX = offset.left;
+        } else if(e.chartX > offset.left + offset.width) {
+          e.chartX = offset.left + offset.width - 2;
+        } else {
+          return null;
+        }
+      }
+
+      const { layout } = this.props;
+      const { orderedTooltipTicks: ticks, tooltipAxis: axis, tooltipTicks } = this.state;
+      const pos = layout === 'horizontal' ? e.chartX : e.chartY;
+      const activeIndex = calculateActiveTickIndex(pos, ticks, axis);
+
+      if (activeIndex >= 0) {
+        const activeLabel = tooltipTicks[activeIndex] && tooltipTicks[activeIndex].value;
+        const activePayload = this.getTooltipContent(activeIndex);
+        const activeCoordinate = tooltipTicks[activeIndex] ? {
+          x: layout === 'horizontal' ? tooltipTicks[activeIndex].coordinate : e.chartX,
+          y: layout === 'horizontal' ? e.chartY : tooltipTicks[activeIndex].coordinate,
+        } : originCoordinate;
+
+        return {
+          ...e,
+          activeTooltipIndex: activeIndex,
+          activeLabel,
+          activePayload,
+          activeCoordinate,
+        };
+      }
+      return null;
+    }
+
   }
 
   return CategoricalChartWrapper;

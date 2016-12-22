@@ -977,7 +977,6 @@ const generateCategoricalChart = (ChartComponent, GraphicalChild) => {
     };
 
     handleTouchStart = (e) => {
-      e.preventDefault();
       if(e.changedTouches == null || e.changedTouches.length == 0) {
         return;
       }

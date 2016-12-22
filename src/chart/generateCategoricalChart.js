@@ -927,7 +927,7 @@ const generateCategoricalChart = (ChartComponent, GraphicalChild) => {
         onMouseEnter: this.handleMouseEnter,
         onMouseMove: this.handleMouseMove,
         onMouseLeave: this.handleMouseLeave,
-        onClick: this.handleClick,
+        //onClick: this.handleClick,
 
         onTouchMove: this.handleTouchMove,
         onTouchStart: this.handleTouchStart,

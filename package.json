@@ -28,7 +28,8 @@
     "test": "NODE_ENV=test karma start test/karma.conf.js",
     "lint": "eslint src",
     "autofix": "eslint src --fix",
-    "bundle-analyse": "NODE_ENV=analyse webpack src/index.js umd/Recharts.js"
+    "bundle-analyse": "NODE_ENV=analyse webpack src/index.js umd/Recharts.js",
+    "xbuild-cjs": "rimraf lib && babel ./src/chart/generateCategoricalChart.js -d lib"
   },
   "pre-commit": [
     "lint"

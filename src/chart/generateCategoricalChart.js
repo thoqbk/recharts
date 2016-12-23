@@ -79,6 +79,7 @@ const generateCategoricalChart = (ChartComponent, GraphicalChild) => {
         ...this.updateStateOfAxisMapsOffsetAndStackGroups({ props, ...defaultState }) };
       this.validateAxes();
       this.uniqueChartId = _.uniqueId('recharts');
+      this.xInitialize();
     }
 
     componentDidMount() {
@@ -969,8 +970,14 @@ const generateCategoricalChart = (ChartComponent, GraphicalChild) => {
     //--------------------------------------------------------------------------
     // Updated to support Game Stats chart. Tho Q Luong. Dec 22, 2016
 
+    xInitialize() {
+      this.touchStartTime = null;
+      this.activateChartTimeout = null;
+      this.horizontalMoves = 0;
+    }
+
     handleTouchMove = (e) => {
-      if(e.changedTouches != null && e.changedTouches.length > 0) {
+      if(e.changedTouches != null && e.changedTouches.length > 0 && this.state.isTooltipActive) {
         let changedTouch = e.changedTouches[0];
         this.processTouch(changedTouch);
       }
@@ -980,58 +987,49 @@ const generateCategoricalChart = (ChartComponent, GraphicalChild) => {
       if(e.changedTouches == null || e.changedTouches.length == 0) {
         return;
       }
-      let changedTouch = e.changedTouches[0];
+      this.horizontalMoves = 0;
+      this.touchStartTime = (new Date()).getTime();
+      let changedTouch = Object.assign({} ,e.changedTouches[0]);
       if(this.state.isTooltipActive) {
         const { offset } = this.state;
         const container = this.container;
         const containerOffset = getOffset(container);
         const ne = calculateChartCoordinate(changedTouch, containerOffset);
         const mouse = this.getMouseInfo(offset, ne);
-        let b = mouse != null && this.state.activeCoordinate != null
-          && Math.abs(this.state.activeCoordinate.x - ne.chartX) > 50;//not near the cursor
-        if(b) {
-          this.setState({
-            isTooltipActive: false
-          });
+        let nearCursor= this.state.activeCoordinate != null
+          && Math.abs(this.state.activeCoordinate.x - ne.chartX) <= 50;//near the cursor
+        if(mouse == null) {//tooltip is active, and touch outside the chart's body
           return;
-        } else if(mouse == null) {//tooltip is active, and touch outside the chart's body
-          return;
+        } else {
+          if(nearCursor) {
+            this.disableScroll();
+          }
+          this.processTouch(changedTouch);
         }
+      } else {
+        this.activateChartTimeout = setTimeout(() => {
+          this.disableScroll();
+          this.setState({
+            isTooltipActive: true
+          });
+          this.processTouch(changedTouch);
+        }, 1000);
       }
-      this.processTouch(changedTouch);
     }
 
     handleTouchEnd = (e) => {
-
+      this.enableScroll();
+      this.checkAndClearActivateChartTimeout();
+      this.checkAndDeactivateChart(e);
     }
 
     handleTouchCancel = (e) => {
-
-    }
-
-    processTouch(e) {
-      const { offset } = this.state;
-      const container = this.container;
-      const containerOffset = getOffset(container);
-      const ne = calculateChartCoordinate(e, containerOffset);
-      const mouse = this.xGetMouseInfo(offset, ne);
-      //const nextState = mouse ? { ...mouse, isTooltipActive: true } : { isTooltipActive: false };
-      if(mouse != null) {
-        const nextState = {
-          ...mouse,
-          isTooltipActive: true
-        }
-        this.setState(nextState);
-        this.triggerSyncEvent(nextState);
-      }
+      this.enableScroll();
+      this.checkAndDeactivateChart(e);
     }
 
     /**
      * Extend this.getMouseInfo
-     * Get the information of mouse in chart, return null when the mouse is not in the chart
-     * @param  {Object} offset   The offset of main part in the svg element
-     * @param  {Object} e        The event object
-     * @return {Object}          Mouse data
      */
     xGetMouseInfo(offset, e) {
       const isIn = e.chartX >= offset.left
@@ -1073,6 +1071,98 @@ const generateCategoricalChart = (ChartComponent, GraphicalChild) => {
       return null;
     }
 
+    //--------------------------------------------------------------------------
+    //  Utils
+    processTouch(e) {
+      const { offset } = this.state;
+      const container = this.container;
+      const containerOffset = getOffset(container);
+      const ne = calculateChartCoordinate(e, containerOffset);
+      const mouse = this.xGetMouseInfo(offset, ne);
+      if(mouse != null) {
+        if(this.isScrollEnabled()) {
+          this.checkHorizontalMovesAndDisableScroll();
+        }
+        const nextState = {
+          ...mouse
+          //,
+          //isTooltipActive: true
+        }
+        this.setState(nextState);
+        this.triggerSyncEvent(nextState);
+      }
+      this.checkAndClearActivateChartTimeout();
+    }
+
+    checkAndClearActivateChartTimeout() {
+      if(this.activateChartTimeout != null) {
+        window.clearTimeout(this.activateChartTimeout);
+        this.activateChartTimeout = null;
+      }
+    }
+
+    checkAndDeactivateChart(touchEvent) {
+      let now = (new Date()).getTime();
+      let delta = now - this.touchStartTime;
+      if(this.state.isTooltipActive && delta < 150
+        && touchEvent.changedTouches != null
+        && touchEvent.changedTouches.length > 0) {
+
+        const { offset } = this.state;
+        const container = this.container;
+        const containerOffset = getOffset(container);
+        const ne = calculateChartCoordinate(touchEvent.changedTouches[0], containerOffset);
+        const mouse = this.getMouseInfo(offset, ne);
+        if(mouse != null) {//touch inside chart's body
+          this.setState({
+            isTooltipActive: false
+          });
+        }
+      }
+    }
+
+    enableScroll() {
+      this.updateScrollState(true);
+    }
+
+    disableScroll() {
+      this.updateScrollState(false);
+    }
+
+    isScrollDisabled() {
+      return this.scrollEnabled === false;
+    }
+
+    isScrollEnabled() {
+      return !(this.scrollEnabled === false);
+    }
+
+    updateScrollState (enable) {
+      this.scrollEnabled = enable;
+      let data = {
+        timestamp: (new Date()).getTime()
+      }
+      data["type"] = enable ? "enableScroll" : "disableScroll";
+      //base url
+      let baseUrl = location.protocol + "//" + location.hostname;
+      if(location.port != null) {
+        baseUrl += ":" + location.port;
+      }
+      baseUrl += "/";
+      window.postMessage(JSON.stringify(data), baseUrl);
+    }
+
+    checkHorizontalMovesAndDisableScroll() {
+      const THRESHOLD = 5;
+      if(this.horizontalMoves == null) {
+        this.horizontalMoves = 1;
+      } else if(this.horizontalMoves >= THRESHOLD) {
+        this.disableScroll();
+        this.horizontalMoves = null;
+      } else {
+        this.horizontalMoves++;
+      }
+    }
   }
 
   return CategoricalChartWrapper;

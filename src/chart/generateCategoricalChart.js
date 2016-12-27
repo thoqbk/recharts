@@ -1013,7 +1013,7 @@ const generateCategoricalChart = (ChartComponent, GraphicalChild) => {
             isTooltipActive: true
           });
           this.processTouch(changedTouch);
-        }, 1000);
+        }, 200);
       }
     }
 

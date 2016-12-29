@@ -101,7 +101,10 @@ export class LineChart extends Component {
     const y1 = layout === 'horizontal' ? offset.top : start;
     const x2 = layout === 'horizontal' ? start : offset.left + offset.width;
     const y2 = layout === 'horizontal' ? offset.top + offset.height : start;
+    const payload = this.props.data[activeTooltipIndex];
     const cursorProps = {
+      payload: payload,
+      offset: offset,
       stroke: '#ccc',
       ...getPresentationAttributes(tooltipItem.props.cursor),
       points: [{ x: x1, y: y1 }, { x: x2, y: y2 }],

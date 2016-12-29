@@ -217,6 +217,8 @@ class Line extends Component {
         ...entry,
         ...lineProps,
         ...customLabelProps,
+        top: this.props.top,
+        left: this.props.left,
         index: i,
         key: `label-${i}`,
       };

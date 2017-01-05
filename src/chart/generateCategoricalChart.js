@@ -96,10 +96,14 @@ const generateCategoricalChart = (ChartComponent, GraphicalChild) => {
         nextProps.layout !== layout || nextProps.stackOffset !== stackOffset ||
         nextProps.margin !== margin) {
         const defaultState = this.createDefaultState(nextProps);
-        this.setState({ ...defaultState,
+        let newState = { ...defaultState,
           ...this.updateStateOfAxisMapsOffsetAndStackGroups(
-            { props: nextProps, ...defaultState }) }
-        );
+            { props: nextProps, ...defaultState }) };
+        if(this.state.activeTooltipIndex >= 0 && this.state.isTooltipActive) {
+          newState.activeTooltipIndex = this.state.activeTooltipIndex;
+          newState.isTooltipActive = this.state.isTooltipActive;
+        }
+        this.setState(newState);
       }
       // add syncId
       if (_.isNil(this.props.syncId) && !_.isNil(nextProps.syncId)) {

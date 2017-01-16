@@ -1153,7 +1153,12 @@ const generateCategoricalChart = (ChartComponent, GraphicalChild) => {
         baseUrl += ":" + location.port;
       }
       baseUrl += "/";
-      window.postMessage(JSON.stringify(data), baseUrl);
+      let dataInString = JSON.stringify(data);
+      if(window.WebViewBridge != null) {
+        window.WebViewBridge.send(dataInString);
+      } else {
+        window.postMessage(dataInString, baseUrl);        
+      }
     }
 
     checkHorizontalMovesAndDisableScroll() {
